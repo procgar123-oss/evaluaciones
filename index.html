@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evaluación Exposición Oral — Proyecto Ecomarket (DAW · LOMLOE)</title>
+
+  <!-- Fuente tipográfica Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Librería html2pdf.js para exportación directa a PDF en el navegador -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            eco: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Estilos base y utilidades de impresión */
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+
+    /* Transiciones suaves para tarjetas seleccionables de la rúbrica */
+    .rubric-cell {
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .rubric-cell:hover {
+      transform: translateY(-2px);
+    }
+
+    /* Estilos específicos para impresión directa desde el navegador (@media print) */
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
+      }
+
+      body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      /* Ocultar la interfaz interactiva y mostrar únicamente el informe oficial */
+      #app-shell,
+      #toast-container,
+      #custom-modal,
+      #pdf-loading-overlay {
+        display: none !important;
+      }
+
+      #pdf-render-stage {
+        position: static !important;
+        display: block !important;
+        width: 100% !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        background: #ffffff !important;
+      }
+
+      #pdf-document {
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-emerald-100 selection:text-emerald-900 pb-32">
+
+  <!-- Contenedor de notificaciones Toast (reemplaza alert) -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Modal de confirmación personalizado (reemplaza confirm) -->
+  <div id="custom-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4" role="dialog" aria-modal="true">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 transform transition-all">
+      <div class="flex items-start gap-3.5">
+        <div id="modal-icon-box" class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h3 id="modal-title" class="text-base font-bold text-slate-900">Confirmar acción</h3>
+          <p id="modal-message" class="mt-1.5 text-sm text-slate-600 leading-relaxed"></p>
+        </div>
+      </div>
+      <div class="mt-6 flex flex-wrap justify-end gap-2.5">
+        <button id="modal-cancel-btn" type="button" class="px-4 py-2.5 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer">
+          Cancelar
+        </button>
+        <button id="modal-confirm-btn" type="button" class="px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition cursor-pointer">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay de generación de PDF -->
+  <div id="pdf-loading-overlay" class="fixed inset-0 z-50 hidden flex-col items-center justify-center bg-slate-900/75 backdrop-blur-xs text-white p-6">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
+      <div class="w-12 h-12 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <h3 class="text-lg font-bold text-white">Generando Rúbrica en PDF</h3>
+      <p class="text-sm text-slate-300 mt-1">Maquetando informe oficial con los componentes del grupo y las valoraciones...</p>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- INTERFAZ INTERACTIVA PRINCIPAL                                        -->
+  <!-- ===================================================================== -->
+  <div id="app-shell" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+
+    <!-- 1. CABECERA INSTITUCIONAL Y ACCIONES RÁPIDAS -->
+    <header class="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl shadow-lg border border-emerald-800/40 p-5 sm:p-7">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+        <div class="space-y-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-semibold tracking-wide uppercase">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Instrumento de Evaluación · Situación de Aprendizaje
+          </div>
+          <h1 class="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-white">
+            Evaluación de Exposición Oral y Defensa Técnica — Proyecto Ecomarket
+          </h1>
+          <p class="text-sm sm:text-base text-slate-300 font-medium">
+            FP Grado Superior en Desarrollo de Aplicaciones Web (DAW) · Diseño de Interfaces Web (0615) · Marco LOMLOE
+          </p>
+        </div>
+
+        <!-- Botones de acción superior -->
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button type="button" onclick="confirmResetEvaluation()" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer" title="Limpiar formulario para evaluar a otro equipo">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            Reiniciar evaluación
+          </button>
+
+          <button type="button" onclick="handlePrintView()" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
+            </svg>
+            Imprimir / Guardar PDF
+          </button>
+
+          <button type="button" onclick="initiatePdfDownload()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md transition cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Descargar Rúbrica (PDF)
+          </button>
+        </div>
+      </div>
+
+      <!-- DESPLEGABLE: ALINEACIÓN CURRICULAR LOMLOE (RD 405/2023) -->
+      <div class="mt-5 pt-4 border-t border-white/15">
+        <button id="toggle-curriculum-btn" type="button" onclick="toggleCurriculum()" aria-expanded="false" class="w-full flex items-center justify-between text-left py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 transition cursor-pointer">
+          <span class="flex items-center gap-2.5 text-sm font-semibold text-emerald-200">
+            <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+            </svg>
+            Alineación Curricular LOMLOE (RD 405/2023): Resultados de Aprendizaje y Saberes Básicos
+          </span>
+          <svg id="curriculum-chevron" class="w-5 h-5 text-emerald-300 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+
+        <div id="curriculum-panel" class="hidden mt-3 bg-slate-900/80 border border-emerald-800/40 rounded-xl p-4 sm:p-5 text-sm text-slate-200 grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div class="space-y-2.5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400">Resultados de Aprendizaje Vinculados (RD 405/2023)</h2>
+            <ul class="space-y-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <li class="flex items-start gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-xs shrink-0 mt-0.5">RA 1</span>
+                <span><strong>Planificación de interfaces web:</strong> Justifica la selección de colores, tipografías, contrastes accesibles y la fidelidad visual respecto a la Guía de Estilo de <em>Ecomarket</em> (UT 1).</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-xs shrink-0 mt-0.5">RA 2</span>
+                <span><strong>Creación de interfaces homogéneos mediante estilos:</strong> Argumenta la arquitectura modular de hojas de estilo (<code class="text-emerald-300">theme.css</code>, <code class="text-emerald-300">components.css</code>), el uso de variables (<code class="text-emerald-300">:root</code>), Flexbox, CSS Grid y estándares W3C.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-xs shrink-0 mt-0.5">RA 5 y 6</span>
+                <span><strong>Accesibilidad y Usabilidad:</strong> Demuestra la verificación de contrastes accesibles y la adaptación y usabilidad de la interfaz en múltiples resoluciones de pantalla.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="space-y-2.5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400">Saberes Básicos Movilizados</h2>
+            <ul class="space-y-1.5 text-xs sm:text-sm text-slate-300 list-disc list-inside leading-relaxed">
+              <li>Sistemas de diseño y <em>Design Tokens</em> implementados mediante <em>Custom Properties</em> (<code class="text-emerald-300">:root</code>) en <code class="text-emerald-300">theme.css</code>.</li>
+              <li>Arquitectura CSS modular, escalable y reutilizable (<code class="text-emerald-300">.btn</code>, <code class="text-emerald-300">.card</code>, modales en <code class="text-emerald-300">components.css</code>) y estructura de directorios (<code class="text-emerald-300">/assets</code>, <code class="text-emerald-300">/css</code>).</li>
+              <li>Maquetación <em>Responsive Web Design</em>: combinación de Flexbox y CSS Grid, gestión de <em>breakpoints</em> (<code class="text-emerald-300">375px</code>, <code class="text-emerald-300">768px</code>, <code class="text-emerald-300">1280px</code>) y depuración en vivo en <em>DevTools</em>.</li>
+              <li>Auditoría de calidad con <em>W3C CSS Validator</em> (0 errores, ausencia de propiedades obsoletas o sin <em>fallback</em>) documentada en <code class="text-emerald-300">informe-w3c.pdf</code>.</li>
+              <li>Comunicación técnica y defensa argumentada de decisiones de diseño en simulación profesional.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2. PANEL DE DATOS DEL GRUPO EVALUADO Y COMPONENTES -->
+    <section class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b border-slate-100">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-extrabold">1</span>
+            Datos del Equipo y Componentes del Grupo
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Introduce los datos identificativos y los nombres de todos los integrantes para que queden registrados en el informe PDF.
+          </p>
+        </div>
+        <span id="member-count-badge" class="inline-flex items-center self-start sm:self-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+          3 integrantes registrados
+        </span>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Columna izquierda: Metadatos del equipo -->
+        <div class="lg:col-span-5 space-y-4">
+          <div>
+            <label for="team-name" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+              Nombre del Equipo / Proyecto
+            </label>
+            <input
+              id="team-name"
+              type="text"
+              value="Equipo Ecomarket"
+              placeholder="Ej. Equipo Ecomarket Alfa"
+              oninput="saveStateToStorage()"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label for="course-group" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                Grupo / Curso
+              </label>
+              <input
+                id="course-group"
+                type="text"
+                value="2º DAW"
+                placeholder="Ej. 2º DAW - Mañana"
+                oninput="saveStateToStorage()"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+              />
+            </div>
+
+            <div>
+              <label for="eval-date" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                Fecha de Evaluación
+              </label>
+              <input
+                id="eval-date"
+                type="date"
+                onchange="saveStateToStorage()"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+              />
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs text-emerald-900 leading-relaxed">
+            <strong>Fórmula de calificación LOMLOE:</strong><br />
+            <span class="font-mono text-[11px] bg-white/80 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-1">
+              Nota = Σ(Puntuación × Peso) × 2,5
+            </span>
+            <span class="block mt-1 text-emerald-800">Escala de 0 a 10 puntos calculada automáticamente al marcar los niveles de la rúbrica.</span>
+          </div>
+        </div>
+
+        <!-- Columna derecha: Gestor dinámico de componentes del grupo -->
+        <div class="lg:col-span-7 bg-slate-50/80 rounded-xl border border-slate-200/90 p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+              </svg>
+              Componentes del Grupo (Apellidos y Nombre)
+            </label>
+            <button type="button" onclick="addTeamMember()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Añadir componente
+            </button>
+          </div>
+
+          <div id="members-list" class="space-y-2.5">
+            <!-- Las filas de integrantes se renderizan dinámicamente mediante JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. RÚBRICA ANALÍTICA INTERACTIVA (5 CRITERIOS PONDERADOS) -->
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-white rounded-2xl shadow-xs border border-slate-200 p-5">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-extrabold">2</span>
+            Rúbrica Analítica de Desempeño (Selecciona un nivel por criterio)
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Haz clic sobre el descriptor correspondiente al nivel alcanzado por el equipo en cada dimensión evaluada.
+          </p>
+        </div>
+
+        <!-- Leyenda rápida de niveles -->
+        <div class="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+          <span class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">Iniciando: 1 pt</span>
+          <span class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">En proceso: 2 pts</span>
+          <span class="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 border border-teal-200">Conseguido: 3 pts</span>
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">Excelente: 4 pts</span>
+        </div>
+      </div>
+
+      <!-- Contenedor donde se generan las 5 tarjetas de criterio -->
+      <div id="rubric-criteria-container" class="space-y-5"></div>
+    </section>
+
+    <!-- 4. OBSERVACIONES GENERALES Y RESUMEN DE CIERRE -->
+    <section class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6">
+      <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-3">
+        <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-extrabold">3</span>
+        Observaciones y Retroalimentación General al Equipo
+      </h2>
+      <p class="text-xs sm:text-sm text-slate-500 mb-3">
+        Añade comentarios globales sobre fortalezas detectadas, calidad de la defensa técnica o aspectos de mejora para futuras entregas.
+      </p>
+      <textarea
+        id="general-observations"
+        rows="3"
+        oninput="saveStateToStorage()"
+        placeholder="Ej. Excelente defensa de la arquitectura modular en theme.css y components.css. La demostración en DevTools en los tres breakpoints (375px, 768px y 1280px) ha sido muy fluida y bien argumentada..."
+        class="w-full px-4 py-3 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+      ></textarea>
+
+      <!-- Tarjeta resumen de calificación final antes de descargar -->
+      <div class="mt-5 pt-5 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="bg-slate-900 text-white px-5 py-3 rounded-2xl flex items-center gap-4">
+            <div>
+              <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Calificación Final</span>
+              <div class="flex items-baseline gap-1.5">
+                <span id="card-final-score" class="text-2xl sm:text-3xl font-extrabold text-emerald-400">0,00</span>
+                <span class="text-sm font-semibold text-slate-400">/ 10,00</span>
+              </div>
+            </div>
+            <div class="h-9 w-px bg-slate-700"></div>
+            <div>
+              <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Valoración LOMLOE</span>
+              <span id="card-qualitative-grade" class="inline-block mt-0.5 text-sm font-bold text-white">Pendiente de evaluar</span>
+            </div>
+          </div>
+
+          <div id="criteria-pills-summary" class="flex flex-wrap gap-1.5">
+            <!-- Píldoras con el desglose ponderado de C1..C5 -->
+          </div>
+        </div>
+
+        <button type="button" onclick="initiatePdfDownload()" class="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Descargar Rúbrica Corregida (PDF)
+        </button>
+      </div>
+    </section>
+
+    <!-- BARRA FLOTANTE FIJA INFERIOR CON PROGRESO Y NOTA EN TIEMPO REAL -->
+    <div class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(15,23,42,0.08)]">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+        <!-- Progreso de criterios -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <span id="sticky-progress-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">
+              0 / 5 criterios
+            </span>
+            <div class="hidden sm:block w-28 h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div id="sticky-progress-bar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+          <span id="sticky-raw-points" class="hidden md:inline-block text-xs font-medium text-slate-500">
+            Puntos ponderados: 0,00 / 4,00
+          </span>
+        </div>
+
+        <!-- Calificación en tiempo real + CTA -->
+        <div class="flex items-center gap-3 sm:gap-4 ml-auto">
+          <div class="text-right">
+            <div class="flex items-center justify-end gap-2">
+              <span class="text-xs font-semibold text-slate-500 hidden sm:inline">Nota LOMLOE:</span>
+              <span id="sticky-final-score" class="text-lg sm:text-xl font-extrabold text-slate-900">0,00 / 10</span>
+              <span id="sticky-qualitative-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600">
+                Sin calificar
+              </span>
+            </div>
+          </div>
+
+          <button type="button" onclick="initiatePdfDownload()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            <span>Descargar PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- PLANTILLA DE INFORME OFICIAL PARA EXPORTACIÓN PDF E IMPRESIÓN         -->
+  <!-- ===================================================================== -->
+  <div id="pdf-render-stage" class="fixed top-0 left-0 w-full z-40 hidden bg-white overflow-auto">
+    <div id="pdf-document" class="mx-auto bg-white text-slate-900 p-5" style="width: 1080px; font-family: 'Inter', sans-serif;">
+      <!-- El contenido del informe oficial se inyecta dinámicamente antes de exportar/imprimir -->
+    </div>
+  </div>
+
+  <script>
+    /**
+     * =========================================================================
+     * DATOS CURRICULARES Y DEFINICIÓN DE LA RÚBRICA ANALÍTICA (PROYECTO ECOMARKET)
+     * =========================================================================
+     */
+    const RUBRIC_LEVELS = [
+      {
+        score: 1,
+        label: 'Iniciando',
+        shortLabel: '1 pt',
+        borderSelected: 'border-rose-600 ring-2 ring-rose-500/30 bg-rose-50/80',
+        badgeSelected: 'bg-rose-600 text-white',
+        badgeDefault: 'bg-rose-100 text-rose-800',
+        pdfCellStyle: 'background-color: #ffe4e6; border: 2px solid #e11d48;'
+      },
+      {
+        score: 2,
+        label: 'En proceso',
+        shortLabel: '2 pts',
+        borderSelected: 'border-amber-600 ring-2 ring-amber-500/30 bg-amber-50/80',
+        badgeSelected: 'bg-amber-600 text-white',
+        badgeDefault: 'bg-amber-100 text-amber-800',
+        pdfCellStyle: 'background-color: #fef3c7; border: 2px solid #d97706;'
+      },
+      {
+        score: 3,
+        label: 'Conseguido',
+        shortLabel: '3 pts',
+        borderSelected: 'border-teal-600 ring-2 ring-teal-500/30 bg-teal-50/80',
+        badgeSelected: 'bg-teal-600 text-white',
+        badgeDefault: 'bg-teal-100 text-teal-800',
+        pdfCellStyle: 'background-color: #ccfbf1; border: 2px solid #0d9488;'
+      },
+      {
+        score: 4,
+        label: 'Excelente',
+        shortLabel: '4 pts',
+        borderSelected: 'border-emerald-700 ring-2 ring-emerald-600/30 bg-emerald-50/90',
+        badgeSelected: 'bg-emerald-700 text-white',
+        badgeDefault: 'bg-emerald-100 text-emerald-800',
+        pdfCellStyle: 'background-color: #d1fae5; border: 2px solid #047857;'
+      }
+    ];
+
+    const RUBRIC_CRITERIA = [
+      {
+        id: 'c1',
+        number: 1,
+        title: 'Argumentación del diseño visual y sistema de tokens',
+        weight: 0.20,
+        weightPercent: '20 %',
+        raTag: 'RA 1 · RA 2',
+        descriptors: {
+          1: 'Describe superficialmente el aspecto de la web sin vincularlo con la Guía de Estilo de la UT 1 ni justificar el uso de variables en theme.css o los contrastes.',
+          2: 'Menciona la paleta cromática y tipografías aplicadas, pero argumenta de forma parcial su fidelidad a la Guía de Estilo o la implementación de Custom Properties en :root.',
+          3: 'Explica con claridad cómo los colores y tipografías de la UT 1 se han trasladado a variables en theme.css, justificando la coherencia visual y los contrastes accesibles.',
+          4: 'Argumenta con rigor técnico y estético cada decisión visual respecto a la Guía de Estilo, demostrando cómo el sistema de Design Tokens (:root) permite variantes de tema y accesibilidad sin duplicar reglas.'
+        }
+      },
+      {
+        id: 'c2',
+        number: 2,
+        title: 'Justificación de la arquitectura CSS y modularidad',
+        weight: 0.20,
+        weightPercent: '20 %',
+        raTag: 'RA 2',
+        descriptors: {
+          1: 'Presenta los archivos CSS de forma desordenada, sin explicar la estructura de carpetas del proyecto ni el propósito de dividir los estilos en módulos.',
+          2: 'Explica la estructura básica de carpetas (/assets, /css), pero tiene dificultades para justificar la reutilización de clases o la prevención de conflictos de especificidad.',
+          3: 'Justifica correctamente la organización modular del directorio del proyecto y el diseño de clases reutilizables (.btn, .card, modales) en components.css para evitar redundancias.',
+          4: 'Defiende con solvencia la arquitectura CSS completa, demostrando cómo la separación entre estilos base, layout y componentes garantiza la escalabilidad y evita conflictos de especificidad en producción.'
+        }
+      },
+      {
+        id: 'c3',
+        number: 3,
+        title: 'Defensa del diseño Responsive y demostración en vivo',
+        weight: 0.25,
+        weightPercent: '25 %',
+        raTag: 'RA 2 · RA 5 · RA 6',
+        descriptors: {
+          1: 'Muestra la web de forma estática o con fallos visuales graves al redimensionar; no justifica la elección entre Flexbox y CSS Grid.',
+          2: 'Realiza una demostración parcial en DevTools, explicando el uso de Flexbox o CSS Grid pero con imprecisiones al justificar el comportamiento en alguno de los breakpoints.',
+          3: 'Ejecuta una demostración fluida en vivo con DevTools en los tres breakpoints (375px, 768px, 1280px) y justifica el uso de Flexbox en barras y CSS Grid en el contenido principal.',
+          4: 'Realiza una demostración en directo impecable en móvil (375px), tableta (768px) y escritorio (1280px), argumentando técnicamente por qué la combinación de Flexbox y CSS Grid optimiza cada región del layout.'
+        }
+      },
+      {
+        id: 'c4',
+        number: 4,
+        title: 'Evidencia de calidad técnica y validación estándar W3C',
+        weight: 0.15,
+        weightPercent: '15 %',
+        raTag: 'RA 2 · RA 5',
+        descriptors: {
+          1: 'Omite la auditoría con el W3C CSS Validator y el archivo informe-w3c.pdf, o presenta errores de validación sin saber explicar su origen ni su solución.',
+          2: 'Muestra el archivo informe-w3c.pdf, pero explica de manera vaga el proceso de depuración técnica o desconoce el motivo de las advertencias detectadas.',
+          3: 'Presenta el certificado del W3C CSS Validator con 0 errores (informe-w3c.pdf) y explica con claridad el proceso de verificación y corrección de la sintaxis CSS.',
+          4: 'Evidencia un estándar de calidad de producción: explica con rigor cómo depuró advertencias, propiedades obsoletas o valores sin fallback hasta lograr 0 errores en el W3C CSS Validator (informe-w3c.pdf).'
+        }
+      },
+      {
+        id: 'c5',
+        number: 5,
+        title: 'Comunicación oral, rigor terminológico y cohesión de equipo',
+        weight: 0.20,
+        weightPercent: '20 %',
+        raTag: 'RA 1 · RA 2 · RA 6',
+        descriptors: {
+          1: 'Exposición desestructurada, lectura literal de diapositivas o código, uso coloquial del lenguaje y reparto muy desigual entre los integrantes del equipo.',
+          2: 'Exposición comprensible pero con vacilaciones, uso irregular de vocabulario técnico o descoordinación puntual en los turnos de intervención y gestión del tiempo.',
+          3: 'Exposición ordenada, ajustada al tiempo, con empleo adecuado de terminología del sector (design tokens, breakpoints, pixel-perfect) y participación equilibrada del equipo.',
+          4: 'Comunicación altamente profesional, persuasiva y coordinada; todo el equipo domina el proyecto global, emplea terminología técnica precisa y responde con seguridad a las preguntas planteadas.'
+        }
+      }
+    ];
+
+    const STORAGE_KEY = 'ecomarket_rubric_eval_v1';
+
+    /**
+     * =========================================================================
+     * ESTADO DE LA APLICACIÓN
+     * =========================================================================
+     */
+    let state = {
+      teamName: 'Equipo Ecomarket',
+      courseGroup: '2º DAW',
+      evalDate: getTodayISO(),
+      members: ['', '', ''],
+      scores: {
+        c1: null,
+        c2: null,
+        c3: null,
+        c4: null,
+        c5: null
+      },
+      criterionFeedback: {
+        c1: '',
+        c2: '',
+        c3: '',
+        c4: '',
+        c5: ''
+      },
+      generalObservations: ''
+    };
+
+    /**
+     * Devuelve la fecha actual en formato YYYY-MM-DD
+     */
+    function getTodayISO() {
+      const now = new Date();
+      const offset = now.getTimezoneOffset();
+      const localDate = new Date(now.getTime() - offset * 60 * 1000);
+      return localDate.toISOString().split('T')[0];
+    }
+
+    /**
+     * Formatea números al estilo decimal español (ej. 7.5 -> "7,50")
+     */
+    function formatDecimalES(num, decimals = 2) {
+      return Number(num || 0).toFixed(decimals).replace('.', ',');
+    }
+
+    /**
+     * Escapa caracteres HTML para evitar inyección al construir plantillas
+     */
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    /**
+     * =========================================================================
+     * INICIALIZACIÓN Y PERSISTENCIA LOCAL
+     * =========================================================================
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      loadStateFromStorage();
+      syncInputsWithState();
+      renderMembersList();
+      renderRubricCriteria();
+      updateCalculations();
+    });
+
+    function loadStateFromStorage() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          state = {
+            ...state,
+            ...parsed,
+            scores: { ...state.scores, ...(parsed.scores || {}) },
+            criterionFeedback: { ...state.criterionFeedback, ...(parsed.criterionFeedback || {}) },
+            members: Array.isArray(parsed.members) && parsed.members.length > 0 ? parsed.members : ['', '', '']
+          };
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar el estado previo:', err);
+      }
+    }
+
+    function saveStateToStorage() {
+      try {
+        state.teamName = document.getElementById('team-name').value;
+        state.courseGroup = document.getElementById('course-group').value;
+        state.evalDate = document.getElementById('eval-date').value;
+        state.generalObservations = document.getElementById('general-observations').value;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.warn('No se pudo guardar en localStorage:', err);
+      }
+    }
+
+    function syncInputsWithState() {
+      document.getElementById('team-name').value = state.teamName || '';
+      document.getElementById('course-group').value = state.courseGroup || '';
+      document.getElementById('eval-date').value = state.evalDate || getTodayISO();
+      document.getElementById('general-observations').value = state.generalObservations || '';
+    }
+
+    /**
+     * =========================================================================
+     * DESPLEGABLE DE ALINEACIÓN CURRICULAR LOMLOE
+     * =========================================================================
+     */
+    function toggleCurriculum() {
+      const panel = document.getElementById('curriculum-panel');
+      const chevron = document.getElementById('curriculum-chevron');
+      const btn = document.getElementById('toggle-curriculum-btn');
+      const isHidden = panel.classList.contains('hidden');
+
+      if (isHidden) {
+        panel.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+        btn.setAttribute('aria-expanded', 'true');
+      } else {
+        panel.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    /**
+     * =========================================================================
+     * GESTOR DINÁMICO DE COMPONENTES DEL GRUPO
+     * =========================================================================
+     */
+    function renderMembersList() {
+      const container = document.getElementById('members-list');
+      container.innerHTML = '';
+
+      state.members.forEach((memberName, index) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-2';
+
+        row.innerHTML = `
+          <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-extrabold flex items-center justify-center shrink-0">
+            ${index + 1}
+          </span>
+          <input
+            type="text"
+            value="${escapeHTML(memberName)}"
+            placeholder="Apellidos, Nombre del integrante ${index + 1}"
+            oninput="updateMemberName(${index}, this.value)"
+            class="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+          />
+          <button
+            type="button"
+            onclick="removeTeamMember(${index})"
+            title="Eliminar componente"
+            class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition cursor-pointer shrink-0"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+            </svg>
+          </button>
+        `;
+        container.appendChild(row);
+      });
+
+      updateMemberCountBadge();
+    }
+
+    function updateMemberName(index, value) {
+      state.members[index] = value;
+      updateMemberCountBadge();
+      saveStateToStorage();
+    }
+
+    function updateMemberCountBadge() {
+      const filledCount = state.members.filter(m => m.trim().length > 0).length;
+      const totalSlots = state.members.length;
+      const badge = document.getElementById('member-count-badge');
+      if (filledCount > 0) {
+        badge.textContent = `${filledCount} ${filledCount === 1 ? 'integrante con nombre' : 'integrantes con nombre'}`;
+        badge.className = 'inline-flex items-center self-start sm:self-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+      } else {
+        badge.textContent = `${totalSlots} espacios disponibles`;
+        badge.className = 'inline-flex items-center self-start sm:self-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600';
+      }
+    }
+
+    function addTeamMember() {
+      state.members.push('');
+      renderMembersList();
+      saveStateToStorage();
+      // Enfocar el nuevo campo recién añadido
+      const inputs = document.querySelectorAll('#members-list input[type="text"]');
+      if (inputs.length > 0) {
+        inputs[inputs.length - 1].focus();
+      }
+    }
+
+    function removeTeamMember(index) {
+      if (state.members.length <= 1) {
+        showToast('Debe mantenerse al menos un espacio para componente del grupo.', 'warning');
+        return;
+      }
+      state.members.splice(index, 1);
+      renderMembersList();
+      saveStateToStorage();
+    }
+
+    /**
+     * =========================================================================
+     * RENDERIZADO E INTERACCIÓN DE LA RÚBRICA ANALÍTICA
+     * =========================================================================
+     */
+    function renderRubricCriteria() {
+      const container = document.getElementById('rubric-criteria-container');
+      container.innerHTML = '';
+
+      RUBRIC_CRITERIA.forEach((criterion) => {
+        const selectedScore = state.scores[criterion.id];
+        const weightedScore = selectedScore ? selectedScore * criterion.weight : 0;
+        const maxWeightedScore = 4 * criterion.weight;
+        const feedbackVal = state.criterionFeedback[criterion.id] || '';
+
+        const article = document.createElement('article');
+        article.className = `bg-white rounded-2xl shadow-xs border transition-colors ${
+          selectedScore ? 'border-emerald-300/90' : 'border-slate-200'
+        } p-4 sm:p-6`;
+
+        // Generar las 4 celdas de niveles
+        const cellsHTML = RUBRIC_LEVELS.map((lvl) => {
+          const isSelected = selectedScore === lvl.score;
+          const cardClasses = isSelected
+            ? `${lvl.borderSelected} shadow-sm`
+            : 'border-slate-200 bg-slate-50/60 hover:bg-white hover:border-slate-300';
+
+          const badgeClasses = isSelected ? lvl.badgeSelected : lvl.badgeDefault;
+
+          return `
+            <button
+              type="button"
+              onclick="selectRubricScore('${criterion.id}', ${lvl.score})"
+              aria-pressed="${isSelected}"
+              class="rubric-cell text-left flex flex-col justify-between p-4 rounded-xl border-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 ${cardClasses}"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-2.5">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${badgeClasses}">
+                    ${isSelected ? `
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    ` : ''}
+                    ${lvl.label} (${lvl.shortLabel})
+                  </span>
+                  ${isSelected ? '<span class="text-[11px] font-extrabold uppercase tracking-wide text-slate-700">Seleccionado</span>' : ''}
+                </div>
+                <p class="text-xs sm:text-[13px] leading-relaxed ${isSelected ? 'text-slate-900 font-medium' : 'text-slate-600'}">
+                  ${criterion.descriptors[lvl.score]}
+                </p>
+              </div>
+            </button>
+          `;
+        }).join('');
+
+        article.innerHTML = `
+          <!-- Cabecera del Criterio -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-md text-xs font-extrabold bg-slate-900 text-white">
+                  Criterio ${criterion.number}
+                </span>
+                <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800">
+                  Peso: ${criterion.weightPercent}
+                </span>
+                <span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600">
+                  ${criterion.raTag}
+                </span>
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900">
+                ${criterion.title}
+              </h3>
+            </div>
+
+            <div class="flex items-center gap-2 self-start sm:self-center shrink-0">
+              <div class="px-3.5 py-1.5 rounded-xl border ${
+                selectedScore
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-slate-50 border-slate-200 text-slate-500'
+              } text-xs font-bold">
+                ${
+                  selectedScore
+                    ? `Nivel: ${selectedScore}/4 · Ponderado: ${formatDecimalES(weightedScore)} / ${formatDecimalES(maxWeightedScore)} pts`
+                    : `Sin valorar (Máx: ${formatDecimalES(maxWeightedScore)} pts)`
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Grid de 4 niveles de desempeño -->
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            ${cellsHTML}
+          </div>
+
+          <!-- Campo opcional de retroalimentación específica por criterio -->
+          <div class="mt-3.5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center gap-2">
+            <label for="fb-${criterion.id}" class="text-xs font-semibold text-slate-500 shrink-0 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+              </svg>
+              Nota breve del criterio (opcional):
+            </label>
+            <input
+              id="fb-${criterion.id}"
+              type="text"
+              value="${escapeHTML(feedbackVal)}"
+              oninput="updateCriterionFeedback('${criterion.id}', this.value)"
+              placeholder="Ej. Buena explicación de variables :root, revisar contraste en botón secundario..."
+              class="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50/60 focus:bg-white text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+            />
+          </div>
+        `;
+
+        container.appendChild(article);
+      });
+    }
+
+    function selectRubricScore(criterionId, score) {
+      // Si vuelve a pulsar el mismo nivel, se desmarca; si pulsa otro, se selecciona
+      if (state.scores[criterionId] === score) {
+        state.scores[criterionId] = null;
+      } else {
+        state.scores[criterionId] = score;
+      }
+      renderRubricCriteria();
+      updateCalculations();
+      saveStateToStorage();
+    }
+
+    function updateCriterionFeedback(criterionId, text) {
+      state.criterionFeedback[criterionId] = text;
+      saveStateToStorage();
+    }
+
+    /**
+     * =========================================================================
+     * CÁLCULO AUTOMÁTICO DE CALIFICACIÓN Y ESCALA CUALITATIVA LOMLOE
+     * =========================================================================
+     */
+    function calculateGrades() {
+      let evaluatedCount = 0;
+      let weightedSum = 0; // Suma de (Puntuación * Peso), máximo 4.00
+
+      const breakdown = RUBRIC_CRITERIA.map((c) => {
+        const raw = state.scores[c.id];
+        if (raw !== null && raw !== undefined) {
+          evaluatedCount++;
+          const weighted = raw * c.weight;
+          weightedSum += weighted;
+          return { ...c, raw, weighted, isEvaluated: true };
+        }
+        return { ...c, raw: 0, weighted: 0, isEvaluated: false };
+      });
+
+      // Fórmula LOMLOE especificada: Nota = Σ(Puntuación × Peso) × 2,5
+      const finalScore10 = weightedSum * 2.5;
+
+      let qualitative = 'Sin calificar';
+      let badgeClasses = 'bg-slate-100 text-slate-600';
+
+      if (evaluatedCount > 0) {
+        if (finalScore10 < 5) {
+          qualitative = 'Insuficiente';
+          badgeClasses = 'bg-rose-100 text-rose-800';
+        } else if (finalScore10 < 6) {
+          qualitative = 'Suficiente';
+          badgeClasses = 'bg-amber-100 text-amber-800';
+        } else if (finalScore10 < 7) {
+          qualitative = 'Bien';
+          badgeClasses = 'bg-sky-100 text-sky-800';
+        } else if (finalScore10 < 9) {
+          qualitative = 'Notable';
+          badgeClasses = 'bg-teal-100 text-teal-800';
+        } else {
+          qualitative = 'Sobresaliente';
+          badgeClasses = 'bg-emerald-100 text-emerald-800';
+        }
+      }
+
+      return {
+        evaluatedCount,
+        totalCriteria: RUBRIC_CRITERIA.length,
+        weightedSum,
+        finalScore10,
+        qualitative,
+        badgeClasses,
+        breakdown
+      };
+    }
+
+    function updateCalculations() {
+      const calc = calculateGrades();
+      const progressPct = (calc.evaluatedCount / calc.totalCriteria) * 100;
+
+      // Barra flotante inferior
+      document.getElementById('sticky-progress-badge').textContent = `${calc.evaluatedCount} / ${calc.totalCriteria} criterios`;
+      document.getElementById('sticky-progress-bar').style.width = `${progressPct}%`;
+      document.getElementById('sticky-raw-points').textContent = `Puntos ponderados: ${formatDecimalES(calc.weightedSum)} / 4,00`;
+      document.getElementById('sticky-final-score').textContent = `${formatDecimalES(calc.finalScore10)} / 10`;
+
+      const stickyBadge = document.getElementById('sticky-qualitative-badge');
+      stickyBadge.textContent = calc.qualitative;
+      stickyBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold ${calc.badgeClasses}`;
+
+      // Tarjeta resumen final
+      document.getElementById('card-final-score').textContent = formatDecimalES(calc.finalScore10);
+      document.getElementById('card-qualitative-grade').textContent = calc.qualitative;
+
+      // Píldoras de desglose por criterio
+      const pillsContainer = document.getElementById('criteria-pills-summary');
+      pillsContainer.innerHTML = calc.breakdown
+        .map((item) => {
+          const style = item.isEvaluated
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+            : 'bg-slate-50 border-slate-200 text-slate-400';
+          return `
+            <div class="px-2.5 py-1.5 rounded-xl border ${style} text-xs">
+              <span class="font-bold">C${item.number} (${item.weightPercent}):</span>
+              <span>${item.isEvaluated ? `${item.raw} pt → ${formatDecimalES(item.weighted)}` : '—'}</span>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    /**
+     * =========================================================================
+     * GENERACIÓN DEL INFORME OFICIAL Y DESCARGA DIRECTA EN PDF (html2pdf.js)
+     * =========================================================================
+     */
+    function buildOfficialReportHTML() {
+      const calc = calculateGrades();
+      const teamName = (document.getElementById('team-name').value || '').trim() || 'Equipo Sin Especificar';
+      const courseGroup = (document.getElementById('course-group').value || '').trim() || '2º DAW';
+      const rawDate = document.getElementById('eval-date').value;
+      const formattedDate = rawDate
+        ? rawDate.split('-').reverse().join('/')
+        : new Date().toLocaleDateString('es-ES');
+
+      const activeMembers = state.members
+        .map(m => m.trim())
+        .filter(m => m.length > 0);
+
+      const membersHTML = activeMembers.length > 0
+        ? activeMembers.map((m, i) => `
+            <span style="display: inline-block; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; margin: 2px 4px 2px 0;">
+              ${i + 1}. ${escapeHTML(m)}
+            </span>
+          `).join('')
+        : '<span style="color: #64748b; font-style: italic; font-size: 11px;">No se han especificado integrantes del equipo.</span>';
+
+      const generalObs = (document.getElementById('general-observations').value || '').trim();
+
+      // Filas de la tabla de rúbrica para el PDF
+      const tableRowsHTML = calc.breakdown.map((criterion) => {
+        const critFb = (state.criterionFeedback[criterion.id] || '').trim();
+
+        const levelCellsHTML = RUBRIC_LEVELS.map((lvl) => {
+          const isSelected = criterion.isEvaluated && criterion.raw === lvl.score;
+          const cellBg = isSelected ? lvl.pdfCellStyle : 'background-color: #ffffff; border: 1px solid #cbd5e1;';
+          const textColor = isSelected ? '#0f172a' : '#475569';
+          const fontWeight = isSelected ? '600' : '400';
+
+          return `
+            <td style="${cellBg} padding: 6px 7px; vertical-align: top; font-size: 9.2px; line-height: 1.32; color: ${textColor}; font-weight: ${fontWeight}; width: 19.5%;">
+              ${isSelected ? `
+                <div style="display: inline-block; background: #0f172a; color: #ffffff; font-size: 8px; font-weight: 800; padding: 1.5px 5px; border-radius: 4px; margin-bottom: 4px; letter-spacing: 0.3px;">
+                  ✓ SELECCIONADO (${lvl.shortLabel})
+                </div>
+              ` : ''}
+              <div>${escapeHTML(criterion.descriptors[lvl.score])}</div>
+            </td>
+          `;
+        }).join('');
+
+        return `
+          <tr style="page-break-inside: avoid;">
+            <td style="border: 1px solid #cbd5e1; background-color: #f8fafc; padding: 6px 8px; vertical-align: top; width: 22%;">
+              <div style="font-size: 10px; font-weight: 700; color: #0f172a; line-height: 1.3;">
+                ${criterion.number}. ${escapeHTML(criterion.title)}
+              </div>
+              <div style="margin-top: 4px; font-size: 8.5px; color: #047857; font-weight: 700;">
+                Peso: ${criterion.weightPercent} · ${criterion.raTag}
+              </div>
+              <div style="margin-top: 4px; display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 8.5px; font-weight: 700; ${
+                criterion.isEvaluated
+                  ? 'background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7;'
+                  : 'background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;'
+              }">
+                ${
+                  criterion.isEvaluated
+                    ? `Nota: ${criterion.raw}/4 (${formatDecimalES(criterion.weighted)} pts)`
+                    : 'Sin valorar'
+                }
+              </div>
+              ${critFb ? `
+                <div style="margin-top: 5px; padding-top: 4px; border-top: 1px dashed #cbd5e1; font-size: 8.5px; color: #334155;">
+                  <strong>Obs.:</strong> ${escapeHTML(critFb)}
+                </div>
+              ` : ''}
+            </td>
+            ${levelCellsHTML}
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div style="color: #0f172a; font-family: 'Inter', Arial, sans-serif;">
+          <!-- Encabezado oficial del documento -->
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2.5px solid #047857; padding-bottom: 8px; margin-bottom: 10px;">
+            <div>
+              <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #047857;">
+                FP Grado Superior en Desarrollo de Aplicaciones Web (DAW) · Marco LOMLOE (RD 405/2023)
+              </div>
+              <h1 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 2px 0;">
+                Rúbrica de Evaluación: Exposición Oral y Defensa Técnica — Proyecto Ecomarket
+              </h1>
+              <div style="font-size: 10px; color: #475569;">
+                Módulo Profesional: <strong>Diseño de Interfaces Web (Código 0615)</strong> · Resultados de Aprendizaje: RA 1, RA 2, RA 5 y RA 6
+              </div>
+            </div>
+
+            <!-- Caja de calificación destacada -->
+            <div style="background: #0f172a; color: #ffffff; padding: 8px 14px; border-radius: 10px; text-align: right; min-width: 165px;">
+              <div style="font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 700;">
+                Calificación Final
+              </div>
+              <div style="font-size: 20px; font-weight: 800; color: #34d399; line-height: 1.15;">
+                ${formatDecimalES(calc.finalScore10)} <span style="font-size: 11px; color: #cbd5e1; font-weight: 600;">/ 10,00</span>
+              </div>
+              <div style="font-size: 10px; font-weight: 700; color: #ffffff; margin-top: 1px;">
+                ${calc.qualitative} (${formatDecimalES(calc.weightedSum)} / 4,00 pts)
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloque de Identificación del Equipo y Componentes del Grupo -->
+          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+              <div><strong>Equipo / Proyecto:</strong> <span style="color: #047857; font-weight: 700;">${escapeHTML(teamName)}</span></div>
+              <div><strong>Curso / Grupo:</strong> ${escapeHTML(courseGroup)}</div>
+              <div><strong>Fecha de evaluación:</strong> ${escapeHTML(formattedDate)}</div>
+            </div>
+            <div style="font-size: 10px;">
+              <strong style="display: inline-block; margin-right: 6px; color: #0f172a;">Componentes del grupo:</strong>
+              ${membersHTML}
+            </div>
+          </div>
+
+          <!-- Tabla completa de la Rúbrica Analítica -->
+          <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 10px;">
+            <thead>
+              <tr style="background-color: #064e3b; color: #ffffff; font-size: 9.5px; text-align: left;">
+                <th style="padding: 6px 8px; border: 1px solid #064e3b; width: 22%;">Criterios de Evaluación (Peso)</th>
+                <th style="padding: 6px 7px; border: 1px solid #064e3b; width: 19.5%;">Iniciando (1 pt)</th>
+                <th style="padding: 6px 7px; border: 1px solid #064e3b; width: 19.5%;">En proceso (2 pts)</th>
+                <th style="padding: 6px 7px; border: 1px solid #064e3b; width: 19.5%;">Conseguido (3 pts)</th>
+                <th style="padding: 6px 7px; border: 1px solid #064e3b; width: 19.5%;">Excelente (4 pts)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRowsHTML}
+            </tbody>
+          </table>
+
+          <!-- Pie con Observaciones Generales y Firma -->
+          <div style="display: flex; gap: 12px; align-items: stretch; page-break-inside: avoid;">
+            <div style="flex: 1; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-size: 9.5px;">
+              <div style="font-weight: 700; color: #0f172a; margin-bottom: 3px;">Observaciones y retroalimentación general al equipo:</div>
+              <div style="color: #334155; line-height: 1.35;">
+                ${generalObs ? escapeHTML(generalObs) : '<span style="color: #94a3b8; font-style: italic;">Sin observaciones adicionales registradas.</span>'}
+              </div>
+            </div>
+
+            <div style="width: 230px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-size: 9px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="color: #475569;">
+                <strong>Fórmula LOMLOE:</strong><br/>
+                Nota = Σ(Puntuación × Peso) × 2,5
+              </div>
+              <div style="border-top: 1px solid #94a3b8; margin-top: 22px; padding-top: 3px; text-align: center; color: #475569; font-weight: 600;">
+                Firma / Sello del Docente
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * Inicia la descarga del PDF verificando si faltan criterios por evaluar
+     */
+    function initiatePdfDownload() {
+      const calc = calculateGrades();
+      if (calc.evaluatedCount < calc.totalCriteria) {
+        openConfirmModal({
+          title: 'Criterios pendientes de valorar',
+          message: `Has evaluado ${calc.evaluatedCount} de ${calc.totalCriteria} criterios. Los criterios sin marcar computarán como 0 puntos en la nota final. ¿Deseas descargar el PDF igualmente?`,
+          confirmText: 'Descargar PDF igualmente',
+          onConfirm: () => executePdfGeneration()
+        });
+      } else {
+        executePdfGeneration();
+      }
+    }
+
+    /**
+     * Genera y descarga directamente el archivo PDF mediante html2pdf.js
+     */
+    async function executePdfGeneration() {
+      const overlay = document.getElementById('pdf-loading-overlay');
+      const renderStage = document.getElementById('pdf-render-stage');
+      const pdfDoc = document.getElementById('pdf-document');
+
+      try {
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+
+        // Construir e inyectar el HTML limpio del informe oficial
+        pdfDoc.innerHTML = buildOfficialReportHTML();
+
+        // Mostrar temporalmente el escenario de captura para que html2canvas lo renderice con precisión
+        renderStage.classList.remove('hidden');
+
+        // Esperar un frame de renderizado del navegador
+        await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 120)));
+
+        const rawTeamName = (document.getElementById('team-name').value || 'Equipo_Ecomarket').trim();
+        const safeFileName = rawTeamName
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9_-]+/g, '_')
+          .replace(/^_+|_+$/g, '') || 'Equipo';
+
+        const filename = `Rubrica_Ecomarket_${safeFileName}.pdf`;
+
+        const opt = {
+          margin: [6, 6, 6, 6],
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            letterRendering: true,
+            windowWidth: 1120
+          },
+          jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'landscape'
+          },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+
+        if (typeof html2pdf === 'undefined') {
+          throw new Error('La librería html2pdf no está disponible.');
+        }
+
+        await html2pdf().set(opt).from(pdfDoc).save();
+
+        showToast(`PDF descargado: ${filename}`, 'success');
+      } catch (error) {
+        console.error('Error al generar el PDF:', error);
+        showToast('No se pudo generar el PDF automático. Se abrirá la vista de impresión del navegador.', 'warning');
+        handlePrintView();
+      } finally {
+        renderStage.classList.add('hidden');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+      }
+    }
+
+    /**
+     * Prepara el documento oficial y abre el diálogo de impresión / guardar PDF nativo
+     */
+    function handlePrintView() {
+      const pdfDoc = document.getElementById('pdf-document');
+      pdfDoc.innerHTML = buildOfficialReportHTML();
+      window.print();
+    }
+
+    /**
+     * =========================================================================
+     * REINICIO DE EVALUACIÓN Y COMPONENTES UI (MODAL Y TOASTS)
+     * =========================================================================
+     */
+    function confirmResetEvaluation() {
+      openConfirmModal({
+        title: '¿Reiniciar evaluación para un nuevo equipo?',
+        message: 'Se borrarán los nombres del equipo, los integrantes, las puntuaciones seleccionadas y las observaciones actuales.',
+        confirmText: 'Sí, reiniciar todo',
+        onConfirm: () => {
+          state = {
+            teamName: 'Equipo Ecomarket',
+            courseGroup: document.getElementById('course-group').value || '2º DAW',
+            evalDate: getTodayISO(),
+            members: ['', '', ''],
+            scores: { c1: null, c2: null, c3: null, c4: null, c5: null },
+            criterionFeedback: { c1: '', c2: '', c3: '', c4: '', c5: '' },
+            generalObservations: ''
+          };
+          localStorage.removeItem(STORAGE_KEY);
+          syncInputsWithState();
+          renderMembersList();
+          renderRubricCriteria();
+          updateCalculations();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          showToast('Formulario reiniciado. Listo para evaluar al siguiente equipo.', 'success');
+        }
+      });
+    }
+
+    function openConfirmModal({ title, message, confirmText = 'Confirmar', onConfirm }) {
+      const modal = document.getElementById('custom-modal');
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-message').textContent = message;
+      const confirmBtn = document.getElementById('modal-confirm-btn');
+      const cancelBtn = document.getElementById('modal-cancel-btn');
+
+      confirmBtn.textContent = confirmText;
+
+      const closeModal = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      };
+
+      confirmBtn.onclick = () => {
+        closeModal();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+
+      cancelBtn.onclick = closeModal;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+
+      const styles = {
+        success: 'bg-emerald-900 text-white border-emerald-700',
+        warning: 'bg-amber-900 text-white border-amber-700',
+        info: 'bg-slate-900 text-white border-slate-700'
+      };
+
+      toast.className = `pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl border shadow-xl text-xs sm:text-sm font-medium transition-all duration-300 ${styles[type] || styles.info}`;
+      toast.innerHTML = `
+        <span>${escapeHTML(message)}</span>
+        <button type="button" class="text-white/70 hover:text-white font-bold cursor-pointer" onclick="this.parentElement.remove()">✕</button>
+      `;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-6px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+  </script>
+</body>
+</html>
