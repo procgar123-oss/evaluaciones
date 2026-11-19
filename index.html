@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Evaluación Exposición Oral — Proyecto Ecomarket (DAW · LOMLOE)</title>
+  <title>Evaluación Rúbrica Ecomarket — Diseño de Interfaces Web (LOMLOE)</title>
 
   <!-- Fuente tipográfica Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,8 +13,9 @@
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Librería html2pdf.js para exportación directa a PDF en el navegador -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- Librerías jsPDF y jsPDF-AutoTable para exportación vectorial directa a PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <script>
     tailwind.config = {
@@ -172,14 +173,14 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
             </svg>
-            Imprimir / Guardar PDF
+            Imprimir / PDF Navegador
           </button>
 
           <button type="button" onclick="initiatePdfDownload()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md transition cursor-pointer">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
-            Descargar Rúbrica (PDF)
+            Descargar Informe PDF
           </button>
         </div>
       </div>
@@ -396,7 +397,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
-          Descargar Rúbrica Corregida (PDF)
+          Descargar Informe PDF
         </button>
       </div>
     </section>
@@ -435,7 +436,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
-            <span>Descargar PDF</span>
+            <span>Descargar Informe PDF</span>
           </button>
         </div>
       </div>
@@ -792,8 +793,8 @@
 
       RUBRIC_CRITERIA.forEach((criterion) => {
         const selectedScore = state.scores[criterion.id];
-        const weightedScore = selectedScore ? selectedScore * criterion.weight : 0;
-        const maxWeightedScore = 4 * criterion.weight;
+        const weightedScore10 = selectedScore ? selectedScore * criterion.weight * 2.5 : 0;
+        const maxWeightedScore10 = 4 * criterion.weight * 2.5;
         const feedbackVal = state.criterionFeedback[criterion.id] || '';
 
         const article = document.createElement('article');
@@ -865,8 +866,8 @@
               } text-xs font-bold">
                 ${
                   selectedScore
-                    ? `Nivel: ${selectedScore}/4 · Ponderado: ${formatDecimalES(weightedScore)} / ${formatDecimalES(maxWeightedScore)} pts`
-                    : `Sin valorar (Máx: ${formatDecimalES(maxWeightedScore)} pts)`
+                    ? `Nivel: ${selectedScore}/4 · Aporte nota: ${formatDecimalES(weightedScore10)} / ${formatDecimalES(maxWeightedScore10)} pts`
+                    : `Sin valorar (Máx: ${formatDecimalES(maxWeightedScore10)} pts)`
                 }
               </div>
             </div>
@@ -931,10 +932,11 @@
         if (raw !== null && raw !== undefined) {
           evaluatedCount++;
           const weighted = raw * c.weight;
+          const weighted10 = weighted * 2.5;
           weightedSum += weighted;
-          return { ...c, raw, weighted, isEvaluated: true };
+          return { ...c, raw, weighted, weighted10, isEvaluated: true };
         }
-        return { ...c, raw: 0, weighted: 0, isEvaluated: false };
+        return { ...c, raw: 0, weighted: 0, weighted10: 0, isEvaluated: false };
       });
 
       // Fórmula LOMLOE especificada: Nota = Σ(Puntuación × Peso) × 2,5
@@ -1001,7 +1003,7 @@
           return `
             <div class="px-2.5 py-1.5 rounded-xl border ${style} text-xs">
               <span class="font-bold">C${item.number} (${item.weightPercent}):</span>
-              <span>${item.isEvaluated ? `${item.raw} pt → ${formatDecimalES(item.weighted)}` : '—'}</span>
+              <span>${item.isEvaluated ? `${item.raw} pt → ${formatDecimalES(item.weighted10)} pts` : '—'}</span>
             </div>
           `;
         })
@@ -1010,7 +1012,31 @@
 
     /**
      * =========================================================================
-     * GENERACIÓN DEL INFORME OFICIAL Y DESCARGA DIRECTA EN PDF (html2pdf.js)
+     * SANITIZACIÓN DE TEXTO PARA FUENTES ESTÁNDAR DE jsPDF (HELVETICA / WINANSI)
+     * =========================================================================
+     */
+    function sanitizeForPdf(text) {
+      if (text === null || text === undefined) return '';
+      return String(text)
+        .replace(/→|⇒|➔/g, '->')
+        .replace(/←|⇐/g, '<-')
+        .replace(/•|·/g, '|')
+        .replace(/✓|✔/g, '[OK]')
+        .replace(/✕|✖|✗/g, '[X]')
+        .replace(/Σ/g, 'Suma')
+        .replace(/×/g, 'x')
+        .replace(/≤/g, '<=')
+        .replace(/≥/g, '>=')
+        .replace(/“|”/g, '"')
+        .replace(/‘|’/g, "'")
+        .replace(/…/g, '...')
+        // Eliminar emojis o caracteres fuera del rango Latin-1 / WinAnsi soportado por Helvetica
+        .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF\u2013\u2014\u20AC]/g, '');
+    }
+
+    /**
+     * =========================================================================
+     * GENERACIÓN VECTORIAL DEL INFORME OFICIAL EN PDF (jsPDF + jsPDF-AutoTable)
      * =========================================================================
      */
     function buildOfficialReportHTML() {
@@ -1036,7 +1062,7 @@
 
       const generalObs = (document.getElementById('general-observations').value || '').trim();
 
-      // Filas de la tabla de rúbrica para el PDF
+      // Filas de la tabla de rúbrica para impresión directa del navegador
       const tableRowsHTML = calc.breakdown.map((criterion) => {
         const critFb = (state.criterionFeedback[criterion.id] || '').trim();
 
@@ -1050,7 +1076,7 @@
             <td style="${cellBg} padding: 6px 7px; vertical-align: top; font-size: 9.2px; line-height: 1.32; color: ${textColor}; font-weight: ${fontWeight}; width: 19.5%;">
               ${isSelected ? `
                 <div style="display: inline-block; background: #0f172a; color: #ffffff; font-size: 8px; font-weight: 800; padding: 1.5px 5px; border-radius: 4px; margin-bottom: 4px; letter-spacing: 0.3px;">
-                  ✓ SELECCIONADO (${lvl.shortLabel})
+                  [SELECCIONADO] (${lvl.shortLabel})
                 </div>
               ` : ''}
               <div>${escapeHTML(criterion.descriptors[lvl.score])}</div>
@@ -1065,7 +1091,7 @@
                 ${criterion.number}. ${escapeHTML(criterion.title)}
               </div>
               <div style="margin-top: 4px; font-size: 8.5px; color: #047857; font-weight: 700;">
-                Peso: ${criterion.weightPercent} · ${criterion.raTag}
+                Peso: ${criterion.weightPercent} | ${criterion.raTag}
               </div>
               <div style="margin-top: 4px; display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 8.5px; font-weight: 700; ${
                 criterion.isEvaluated
@@ -1074,7 +1100,7 @@
               }">
                 ${
                   criterion.isEvaluated
-                    ? `Nota: ${criterion.raw}/4 (${formatDecimalES(criterion.weighted)} pts)`
+                    ? `Nota: ${criterion.raw}/4 (${formatDecimalES(criterion.weighted10)} pts)`
                     : 'Sin valorar'
                 }
               </div>
@@ -1095,13 +1121,13 @@
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2.5px solid #047857; padding-bottom: 8px; margin-bottom: 10px;">
             <div>
               <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #047857;">
-                FP Grado Superior en Desarrollo de Aplicaciones Web (DAW) · Marco LOMLOE (RD 405/2023)
+                FP Grado Superior en Desarrollo de Aplicaciones Web (DAW) | Marco LOMLOE (RD 405/2023)
               </div>
               <h1 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 2px 0;">
                 Rúbrica de Evaluación: Exposición Oral y Defensa Técnica — Proyecto Ecomarket
               </h1>
               <div style="font-size: 10px; color: #475569;">
-                Módulo Profesional: <strong>Diseño de Interfaces Web (Código 0615)</strong> · Resultados de Aprendizaje: RA 1, RA 2, RA 5 y RA 6
+                Módulo Profesional: <strong>Diseño de Interfaces Web (Código 0615)</strong> | Resultados de Aprendizaje: RA 1, RA 2, RA 5 y RA 6
               </div>
             </div>
 
@@ -1160,7 +1186,7 @@
             <div style="width: 230px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-size: 9px; display: flex; flex-direction: column; justify-content: space-between;">
               <div style="color: #475569;">
                 <strong>Fórmula LOMLOE:</strong><br/>
-                Nota = Σ(Puntuación × Peso) × 2,5
+                Nota = Suma(Puntuación x Peso) x 2,5
               </div>
               <div style="border-top: 1px solid #94a3b8; margin-top: 22px; padding-top: 3px; text-align: center; color: #475569; font-weight: 600;">
                 Firma / Sello del Docente
@@ -1189,26 +1215,341 @@
     }
 
     /**
-     * Genera y descarga directamente el archivo PDF mediante html2pdf.js
+     * Genera y descarga el informe PDF vectorial usando jsPDF y jsPDF-AutoTable
      */
-    async function executePdfGeneration() {
+    function executePdfGeneration() {
       const overlay = document.getElementById('pdf-loading-overlay');
-      const renderStage = document.getElementById('pdf-render-stage');
-      const pdfDoc = document.getElementById('pdf-document');
 
       try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          throw new Error('La librería jsPDF no se ha cargado correctamente.');
+        }
+
         overlay.classList.remove('hidden');
         overlay.classList.add('flex');
 
-        // Construir e inyectar el HTML limpio del informe oficial
-        pdfDoc.innerHTML = buildOfficialReportHTML();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
 
-        // Mostrar temporalmente el escenario de captura para que html2canvas lo renderice con precisión
-        renderStage.classList.remove('hidden');
+        const pageWidth = doc.internal.pageSize.getWidth();   // 297 mm
+        const pageHeight = doc.internal.pageSize.getHeight(); // 210 mm
+        const margin = 10;
+        const usableWidth = pageWidth - margin * 2;           // 277 mm
 
-        // Esperar un frame de renderizado del navegador
-        await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 120)));
+        const calc = calculateGrades();
+        const teamName = sanitizeForPdf((document.getElementById('team-name').value || '').trim() || 'Equipo Sin Especificar');
+        const courseGroup = sanitizeForPdf((document.getElementById('course-group').value || '').trim() || '2º DAW');
+        const rawDate = document.getElementById('eval-date').value;
+        const formattedDate = rawDate
+          ? rawDate.split('-').reverse().join('/')
+          : new Date().toLocaleDateString('es-ES');
 
+        const activeMembers = state.members
+          .map(m => sanitizeForPdf(m.trim()))
+          .filter(m => m.length > 0);
+
+        const membersFormatted = activeMembers.length > 0
+          ? activeMembers.map((m, idx) => `${idx + 1}. ${m}`).join('   |   ')
+          : 'No se han especificado integrantes del equipo.';
+
+        const generalObs = sanitizeForPdf((document.getElementById('general-observations').value || '').trim());
+
+        // ---------------------------------------------------------------------
+        // 1. CABECERA INSTITUCIONAL EN VERDE ESMERALDA (#065f46)
+        // ---------------------------------------------------------------------
+        const headerY = 8;
+        const headerH = 16;
+        doc.setFillColor(6, 95, 70); // #065f46
+        doc.roundedRect(margin, headerY, usableWidth, headerH, 2, 2, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text(
+          sanitizeForPdf('RÚBRICA DE EVALUACIÓN: EXPOSICIÓN ORAL Y DEFENSA TÉCNICA — SITIO WEB ECOMARKET'),
+          margin + 4,
+          headerY + 6.5
+        );
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.2);
+        doc.setTextColor(209, 250, 229); // #d1fae5
+        doc.text(
+          sanitizeForPdf('FP Grado Superior DAW | Módulo: Diseño de Interfaces Web (0615) | UT 1 & UT 2 (Marco LOMLOE)'),
+          margin + 4,
+          headerY + 12.2
+        );
+
+        // ---------------------------------------------------------------------
+        // 2. BLOQUE DE DATOS DEL EQUIPO, COMPONENTES Y CALIFICACIÓN FINAL
+        // ---------------------------------------------------------------------
+        const infoY = headerY + headerH + 3;
+        const gradeBoxW = 58;
+        const infoBoxW = usableWidth - gradeBoxW - 3;
+
+        // Calcular altura dinámica según la longitud de los nombres de integrantes
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.2);
+        const membersWrapped = doc.splitTextToSize(
+          `Componentes del grupo: ${membersFormatted}`,
+          infoBoxW - 8
+        );
+        const infoBoxH = Math.max(17, 10 + membersWrapped.length * 3.8);
+
+        // Caja izquierda: Identificación del equipo y componentes
+        doc.setFillColor(248, 250, 252); // #f8fafc
+        doc.setDrawColor(203, 213, 225); // #cbd5e1
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, infoY, infoBoxW, infoBoxH, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(`Equipo / Proyecto: ${teamName}`, margin + 4, infoY + 5.2);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.2);
+        doc.setTextColor(51, 65, 85);
+        doc.text(`Curso / Grupo: ${courseGroup}   |   Fecha: ${formattedDate}`, margin + infoBoxW - 4, infoY + 5.2, {
+          align: 'right'
+        });
+
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin + 4, infoY + 7.2, margin + infoBoxW - 4, infoY + 7.2);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(6, 95, 70);
+        doc.text(membersWrapped, margin + 4, infoY + 11.2);
+
+        // Caja derecha: Calificación Final sobre 10
+        const gradeBoxX = margin + infoBoxW + 3;
+        doc.setFillColor(15, 23, 42); // #0f172a
+        doc.roundedRect(gradeBoxX, infoY, gradeBoxW, infoBoxH, 2, 2, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.2);
+        doc.setTextColor(148, 163, 184);
+        doc.text('CALIFICACIÓN FINAL (LOMLOE)', gradeBoxX + gradeBoxW / 2, infoY + 4.5, { align: 'center' });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(52, 211, 153); // #34d399
+        doc.text(
+          `${formatDecimalES(calc.finalScore10)} / 10,00`,
+          gradeBoxX + gradeBoxW / 2,
+          infoY + 10.5,
+          { align: 'center' }
+        );
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.8);
+        doc.setTextColor(255, 255, 255);
+        doc.text(
+          sanitizeForPdf(`${calc.qualitative} (${formatDecimalES(calc.weightedSum)} / 4,00 pts)`),
+          gradeBoxX + gradeBoxW / 2,
+          infoY + 14.8,
+          { align: 'center' }
+        );
+
+        // ---------------------------------------------------------------------
+        // 3. TABLA COMPLETA DE LA RÚBRICA ANALÍTICA (jsPDF-AutoTable)
+        // ---------------------------------------------------------------------
+        const tableStartY = infoY + infoBoxH + 3;
+
+        const tableHead = [[
+          'Criterio de Evaluación (Peso)',
+          'Iniciando (1 pt)',
+          'En proceso (2 pts)',
+          'Conseguido (3 pts)',
+          'Excelente (4 pts)',
+          'Puntuación'
+        ]];
+
+        const tableBody = calc.breakdown.map((criterion) => {
+          const criterionCol = sanitizeForPdf(
+            `${criterion.number}. ${criterion.title}\nPeso: ${criterion.weightPercent} | ${criterion.raTag}`
+          );
+
+          const levelCols = [1, 2, 3, 4].map((lvlScore) => {
+            const isSelected = criterion.isEvaluated && criterion.raw === lvlScore;
+            const rawDesc = sanitizeForPdf(criterion.descriptors[lvlScore]);
+            return isSelected ? `[SELECCIONADO]\n${rawDesc}` : rawDesc;
+          });
+
+          const maxPts10 = 4 * criterion.weight * 2.5;
+          const scoreCol = criterion.isEvaluated
+            ? sanitizeForPdf(
+                `Nivel: ${criterion.raw} / 4\nPond.: ${formatDecimalES(criterion.weighted10)} / ${formatDecimalES(maxPts10)} pts`
+              )
+            : sanitizeForPdf(`Sin valorar\n(Máx: ${formatDecimalES(maxPts10)} pts)`);
+
+          return [criterionCol, ...levelCols, scoreCol];
+        });
+
+        doc.autoTable({
+          startY: tableStartY,
+          margin: { left: margin, right: margin, bottom: 14 },
+          head: tableHead,
+          body: tableBody,
+          theme: 'grid',
+          showHead: 'everyPage',
+          styles: {
+            font: 'helvetica',
+            fontSize: 6.9,
+            cellPadding: { top: 2.2, right: 2.4, bottom: 2.2, left: 2.4 },
+            textColor: [30, 41, 59],
+            lineColor: [203, 213, 225],
+            lineWidth: 0.25,
+            overflow: 'linebreak',
+            valign: 'top'
+          },
+          headStyles: {
+            fillColor: [6, 95, 70], // #065f46
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 7.6,
+            halign: 'left',
+            valign: 'middle',
+            cellPadding: { top: 2.6, right: 2.4, bottom: 2.6, left: 2.4 }
+          },
+          columnStyles: {
+            0: { cellWidth: 48, fillColor: [248, 250, 252], fontStyle: 'bold', textColor: [15, 23, 42] },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 50 },
+            3: { cellWidth: 50 },
+            4: { cellWidth: 50 },
+            5: { cellWidth: 29, halign: 'center', valign: 'middle', fillColor: [248, 250, 252] }
+          },
+          didParseCell: function (data) {
+            if (data.section === 'body') {
+              const criterion = calc.breakdown[data.row.index];
+              if (!criterion) return;
+
+              // Resaltar visualmente la celda elegida en cada criterio (columnas 1..4)
+              if (data.column.index >= 1 && data.column.index <= 4) {
+                if (criterion.isEvaluated && criterion.raw === data.column.index) {
+                  data.cell.styles.fillColor = [209, 250, 229]; // #d1fae5
+                  data.cell.styles.textColor = [6, 78, 59];    // #064e3b
+                  data.cell.styles.fontStyle = 'bold';
+                  data.cell.styles.lineColor = [5, 150, 105];  // #059669
+                  data.cell.styles.lineWidth = 0.45;
+                }
+              }
+
+              // Resaltar columna de puntuación final del criterio (columna 5)
+              if (data.column.index === 5 && criterion.isEvaluated) {
+                data.cell.styles.fillColor = [236, 253, 245]; // #ecfdf5
+                data.cell.styles.textColor = [6, 95, 70];     // #065f46
+                data.cell.styles.fontStyle = 'bold';
+              }
+            }
+          }
+        });
+
+        // ---------------------------------------------------------------------
+        // 4. RETROALIMENTACIÓN FORMATIVA Y PIE DE PÁGINA CON FIRMA
+        // ---------------------------------------------------------------------
+        const criterionNotesList = calc.breakdown
+          .map((c) => {
+            const note = sanitizeForPdf((state.criterionFeedback[c.id] || '').trim());
+            return note ? `C${c.number} (${c.title}): ${note}` : null;
+          })
+          .filter(Boolean);
+
+        const feedbackRows = [];
+        if (criterionNotesList.length > 0) {
+          feedbackRows.push([
+            'Notas por criterio:',
+            criterionNotesList.join('  |  ')
+          ]);
+        }
+        feedbackRows.push([
+          'Observaciones generales:',
+          generalObs || 'Sin observaciones adicionales registradas.'
+        ]);
+
+        let currentY = (doc.lastAutoTable ? doc.lastAutoTable.finalY : tableStartY) + 3;
+
+        // Si no cabe el bloque de retroalimentación + firma antes del borde inferior, saltar de página
+        if (currentY + 26 > pageHeight - 8) {
+          doc.addPage();
+          currentY = 12;
+        }
+
+        doc.autoTable({
+          startY: currentY,
+          margin: { left: margin, right: margin, bottom: 16 },
+          head: [['RETROALIMENTACIÓN FORMATIVA AL EQUIPO', '']],
+          body: feedbackRows,
+          theme: 'grid',
+          styles: {
+            font: 'helvetica',
+            fontSize: 7.3,
+            cellPadding: { top: 2, right: 2.5, bottom: 2, left: 2.5 },
+            textColor: [30, 41, 59],
+            lineColor: [203, 213, 225],
+            lineWidth: 0.25,
+            overflow: 'linebreak'
+          },
+          headStyles: {
+            fillColor: [15, 23, 42], // #0f172a
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 7.5
+          },
+          columnStyles: {
+            0: { cellWidth: 48, fontStyle: 'bold', fillColor: [248, 250, 252], textColor: [15, 23, 42] },
+            1: { cellWidth: usableWidth - 48 }
+          },
+          didParseCell: function (data) {
+            if (data.section === 'head' && data.column.index === 0) {
+              data.cell.colSpan = 2;
+            }
+          }
+        });
+
+        // Pie de página oficial en todas las páginas generadas
+        const totalPages = doc.internal.getNumberOfPages();
+        const emissionDateTime = new Date().toLocaleString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i);
+          const footerY = pageHeight - 6;
+
+          doc.setDrawColor(203, 213, 225);
+          doc.setLineWidth(0.25);
+          doc.line(margin, footerY - 3.5, pageWidth - margin, footerY - 3.5);
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.2);
+          doc.setTextColor(100, 116, 139);
+          doc.text(
+            sanitizeForPdf(
+              `Emitido el ${emissionDateTime} | Fórmula LOMLOE: Nota = Suma(Puntuación x Peso) x 2,5 | Página ${i} de ${totalPages}`
+            ),
+            margin,
+            footerY
+          );
+
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(51, 65, 85);
+          doc.text('Firma / Sello del Docente: ___________________________', pageWidth - margin, footerY, {
+            align: 'right'
+          });
+        }
+
+        // Nombre de archivo limpio y descarga directa con fallback Blob
         const rawTeamName = (document.getElementById('team-name').value || 'Equipo_Ecomarket').trim();
         const safeFileName = rawTeamName
           .normalize('NFD')
@@ -1218,38 +1559,27 @@
 
         const filename = `Rubrica_Ecomarket_${safeFileName}.pdf`;
 
-        const opt = {
-          margin: [6, 6, 6, 6],
-          filename: filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            letterRendering: true,
-            windowWidth: 1120
-          },
-          jsPDF: {
-            unit: 'mm',
-            format: 'a4',
-            orientation: 'landscape'
-          },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
-
-        if (typeof html2pdf === 'undefined') {
-          throw new Error('La librería html2pdf no está disponible.');
+        try {
+          doc.save(filename);
+        } catch (saveErr) {
+          // Fallback explícito mediante Blob y URL.createObjectURL
+          const pdfBlob = doc.output('blob');
+          const blobUrl = URL.createObjectURL(pdfBlob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
         }
 
-        await html2pdf().set(opt).from(pdfDoc).save();
-
-        showToast(`PDF descargado: ${filename}`, 'success');
+        showToast(`Informe PDF descargado: ${filename}`, 'success');
       } catch (error) {
-        console.error('Error al generar el PDF:', error);
-        showToast('No se pudo generar el PDF automático. Se abrirá la vista de impresión del navegador.', 'warning');
+        console.error('Error al generar el PDF con jsPDF:', error);
+        showToast('No se pudo generar el PDF automáticamente. Abriendo vista de impresión...', 'warning');
         handlePrintView();
       } finally {
-        renderStage.classList.add('hidden');
         overlay.classList.add('hidden');
         overlay.classList.remove('flex');
       }
